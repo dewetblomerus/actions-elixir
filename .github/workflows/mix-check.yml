@@ -1,0 +1,120 @@
+name: Elixir Mix Check
+
+on:
+  workflow_call:
+    inputs:
+      check-command:
+        description: Command that runs the repository's full check suite.
+        required: false
+        type: string
+        default: mix check
+      deps-command:
+        description: Command that installs project dependencies.
+        required: false
+        type: string
+        default: mix deps.get
+      elixir-version:
+        description: Elixir version to install when version-file is not present.
+        required: false
+        type: string
+        default: "1.19.5-otp-29"
+      mix-env:
+        description: MIX_ENV used for dependency installation and checks.
+        required: false
+        type: string
+        default: test
+      otp-version:
+        description: Erlang/OTP version to install when version-file is not present.
+        required: false
+        type: string
+        default: "29.1"
+      runs-on:
+        description: GitHub runner label.
+        required: false
+        type: string
+        default: ubuntu-latest
+      version-file:
+        description: Version file read by erlef/setup-beam, usually .tool-versions.
+        required: false
+        type: string
+        default: .tool-versions
+      working-directory:
+        description: Directory that contains mix.exs.
+        required: false
+        type: string
+        default: .
+      cache-version:
+        description: Manual cache-busting value.
+        required: false
+        type: string
+        default: v1
+
+env:
+  MIX_ENV: ${{ inputs.mix-env }}
+
+permissions:
+  contents: read
+
+jobs:
+  mix-check:
+    name: Mix Check
+    runs-on: ${{ inputs.runs-on }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-retries 5
+          --health-timeout 5s
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Elixir from version file
+        id: setup-beam-file
+        if: hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) != ''
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: ${{ inputs.working-directory }}/${{ inputs.version-file }}
+          version-type: strict
+
+      - name: Set up Elixir from inputs
+        id: setup-beam-inputs
+        if: hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) == ''
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ inputs.otp-version }}
+          elixir-version: ${{ inputs.elixir-version }}
+          version-type: strict
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.working-directory }}/deps
+          key: ${{ runner.os }}-mix-deps-${{ inputs.cache-version }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-mix-deps-${{ inputs.cache-version }}-
+            ${{ runner.os }}-mix-deps-
+
+      - name: Cache compiled build
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.working-directory }}/_build
+          key: ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-${{ env.MIX_ENV }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}-${{ hashFiles(format('{0}/mix.exs', inputs.working-directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-${{ env.MIX_ENV }}-
+            ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-
+            ${{ runner.os }}-mix-build-
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.deps-command }}
+
+      - name: Check everything
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.check-command }}

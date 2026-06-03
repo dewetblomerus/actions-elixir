@@ -1,4 +1,4 @@
-name: Elixir Mix Check
+name: Elixir CI
 
 on:
   workflow_call:
@@ -66,7 +66,7 @@ permissions:
   contents: read
 
 jobs:
-  mix-check:
+  check:
     name: Mix Check
     runs-on: ${{ inputs.runs-on }}
     services:
@@ -129,7 +129,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: ${{ inputs.check-command }}
 
-  mix-audit:
+  audit:
     name: Mix Audit
     runs-on: ${{ inputs.runs-on }}
     continue-on-error: ${{ inputs.audit-continue-on-error }}

@@ -23,30 +23,33 @@ permissions:
   contents: read
 
 jobs:
-  mix-check:
-    uses: dewetblomerus/actions-elixir/.github/workflows/mix-check.yml@main
+  elixir-ci:
+    name: Elixir CI
+    uses: dewetblomerus/actions-elixir/.github/workflows/elixir-ci.yml@main
 ```
 
 If the app has a `.tool-versions` file, `erlef/setup-beam` reads Erlang and Elixir versions from it. If not, pass exact versions:
 
 ```yaml
 jobs:
-  mix-check:
-    uses: dewetblomerus/actions-elixir/.github/workflows/mix-check.yml@main
+  elixir-ci:
+    name: Elixir CI
+    uses: dewetblomerus/actions-elixir/.github/workflows/elixir-ci.yml@main
     with:
       otp-version: "29.1"
       elixir-version: "1.19.5-otp-29"
 ```
 
-For branch protection, require the `Mix Check` job. The reusable workflow also creates a `Mix Audit` job, but it is allowed to fail by default so dependency advisories show up without blocking PR merges.
+For branch protection with the reusable workflow, require the `Elixir CI / Mix Check` check. The reusable workflow also creates an `Elixir CI / Mix Audit` check, but it is allowed to fail by default so dependency advisories show up without blocking PR merges.
 
 Examples for the existing apps:
 
 ```yaml
 # red, because it does not currently have .tool-versions
 jobs:
-  mix-check:
-    uses: dewetblomerus/actions-elixir/.github/workflows/mix-check.yml@main
+  elixir-ci:
+    name: Elixir CI
+    uses: dewetblomerus/actions-elixir/.github/workflows/elixir-ci.yml@main
     with:
       otp-version: "29.1"
       elixir-version: "1.19.5-otp-29"
@@ -55,8 +58,9 @@ jobs:
 ```yaml
 # quick-average and mobile-worship can use their checked-in .tool-versions
 jobs:
-  mix-check:
-    uses: dewetblomerus/actions-elixir/.github/workflows/mix-check.yml@main
+  elixir-ci:
+    name: Elixir CI
+    uses: dewetblomerus/actions-elixir/.github/workflows/elixir-ci.yml@main
 ```
 
 ## Composite action
@@ -106,6 +110,8 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dewetblomerus/actions-elixir/.github/actions/mix-audit@main
 ```
+
+For branch protection with the composite action, require only the `Mix Check` job.
 
 ## Inputs
 

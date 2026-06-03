@@ -1,8 +1,8 @@
 # actions-elixir
 
-Shared GitHub Actions for Elixir projects that use `mix check` as the single CI gate.
+Shared GitHub Actions for Elixir projects that use `mix check` as the required CI gate and `mix_audit` as a separate informational check.
 
-Each application owns its own `mix.exs` and decides what `mix check` means. This repository only handles GitHub Actions boilerplate: checkout, BEAM setup, Mix dependency and build caches, dependency installation, and running the check command.
+Each application owns its own `mix.exs` and decides what `mix check` means. This repository only handles GitHub Actions boilerplate: checkout, BEAM setup, Mix dependency and build caches, dependency installation, running the required check command, and running dependency audit separately.
 
 ## Reusable workflow
 
@@ -38,7 +38,7 @@ jobs:
       elixir-version: "1.19.5-otp-29"
 ```
 
-For a required branch protection check, require the `Mix Check` job.
+For branch protection, require the `Mix Check` job. The reusable workflow also creates a `Mix Audit` job, but it is allowed to fail by default so dependency advisories show up without blocking PR merges.
 
 Examples for the existing apps:
 
@@ -97,16 +97,24 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: dewetblomerus/actions-elixir/.github/actions/mix-check@main
+
+  mix-audit:
+    name: Mix Audit
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dewetblomerus/actions-elixir/.github/actions/mix-audit@main
 ```
 
 ## Inputs
 
-Both entry points support these inputs:
+Both mix check entry points support these inputs:
 
 | Input | Default | Purpose |
 | --- | --- | --- |
 | `cache-version` | `v1` | Change this to force fresh Mix caches. |
-| `check-command` | `mix check` | Command that must pass before merge. |
+| `check-command` | `mix check --except mix_audit` | Command that must pass before merge. |
 | `deps-command` | `mix deps.get` | Dependency installation command. |
 | `elixir-version` | `1.19.5-otp-29` | Used only when `version-file` does not exist. |
 | `mix-env` | `test` | `MIX_ENV` for dependency installation and checks. |
@@ -115,6 +123,18 @@ Both entry points support these inputs:
 | `working-directory` | `.` | Directory containing `mix.exs`. |
 
 The reusable workflow also supports `runs-on`, defaulting to `ubuntu-latest`.
+
+The reusable workflow and `mix-audit` composite action also support:
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `audit-command` | `mix deps.audit` | Command that runs the informational dependency audit. |
+
+The reusable workflow also supports:
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `audit-continue-on-error` | `true` | Allows `Mix Audit` to fail without failing the workflow. |
 
 ## Configuring `mix check`
 
@@ -136,7 +156,8 @@ end
 
 defp deps do
   [
-    {:ex_check, "~> 0.16.0", only: [:dev, :test], runtime: false}
+    {:ex_check, "~> 0.16.0", only: [:dev, :test], runtime: false},
+    {:mix_audit, "~> 2.1", only: [:dev, :test], runtime: false}
   ]
 end
 
@@ -148,14 +169,15 @@ defp aliases do
       "format --check-formatted",
       "test",
       "credo --strict",
-      "sobelow --config"
+      "sobelow --config",
+      "deps.audit"
     ]
   ]
 end
 ```
 
-Tune the list per repo. For example, apps without Sobelow should remove that task, and apps with asset or Dialyzer checks can add them.
+Tune the list per repo. For example, apps without Sobelow should remove that task, and apps with asset or Dialyzer checks can add them. The shared action runs `mix check --except mix_audit` by default, so the `mix_audit` check is excluded from the required job and run separately as `Mix Audit`.
 
 ## Notes
 
-This setup follows the useful parts of Felt's Ultimate Elixir CI pattern: shared setup, dependency/build caching, and a single required quality gate. It intentionally leaves the actual quality policy in each app's `mix.exs` so every repository can evolve its checks independently while GitHub Actions stays shared.
+This setup follows the useful parts of Felt's Ultimate Elixir CI pattern: shared setup, dependency/build caching, a single required quality gate, and a separate informational dependency audit. It intentionally leaves the actual quality policy in each app's `mix.exs` so every repository can evolve its checks independently while GitHub Actions stays shared.

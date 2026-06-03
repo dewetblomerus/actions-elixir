@@ -4,10 +4,20 @@ on:
   workflow_call:
     inputs:
       check-command:
-        description: Command that runs the repository's full check suite.
+        description: Command that runs the repository's required check suite.
         required: false
         type: string
-        default: mix check
+        default: mix check --except mix_audit
+      audit-command:
+        description: Command that runs the repository's informational dependency audit.
+        required: false
+        type: string
+        default: mix deps.audit
+      audit-continue-on-error:
+        description: Whether the dependency audit job is allowed to fail without failing the workflow.
+        required: false
+        type: boolean
+        default: true
       deps-command:
         description: Command that installs project dependencies.
         required: false
@@ -118,3 +128,45 @@ jobs:
       - name: Check everything
         working-directory: ${{ inputs.working-directory }}
         run: ${{ inputs.check-command }}
+
+  mix-audit:
+    name: Mix Audit
+    runs-on: ${{ inputs.runs-on }}
+    continue-on-error: ${{ inputs.audit-continue-on-error }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Elixir from version file
+        id: setup-beam-file
+        if: hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) != ''
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: ${{ inputs.working-directory }}/${{ inputs.version-file }}
+          version-type: strict
+
+      - name: Set up Elixir from inputs
+        id: setup-beam-inputs
+        if: hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) == ''
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: ${{ inputs.otp-version }}
+          elixir-version: ${{ inputs.elixir-version }}
+          version-type: strict
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: ${{ inputs.working-directory }}/deps
+          key: ${{ runner.os }}-mix-deps-${{ inputs.cache-version }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}
+          restore-keys: |
+            ${{ runner.os }}-mix-deps-${{ inputs.cache-version }}-
+            ${{ runner.os }}-mix-deps-
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.deps-command }}
+
+      - name: Audit dependencies
+        working-directory: ${{ inputs.working-directory }}
+        run: ${{ inputs.audit-command }}

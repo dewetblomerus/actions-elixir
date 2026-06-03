@@ -1,15 +1,15 @@
-name: Elixir Mix Check
-description: Set up Elixir, restore Mix caches, install dependencies, and run the required mix check suite.
+name: Elixir Mix Audit
+description: Set up Elixir, restore Mix caches, install dependencies, and run mix deps.audit.
 
 inputs:
+  audit-command:
+    description: Command that runs the repository's informational dependency audit.
+    required: false
+    default: mix deps.audit
   cache-version:
     description: Manual cache-busting value.
     required: false
     default: v1
-  check-command:
-    description: Command that runs the repository's required check suite.
-    required: false
-    default: mix check --except mix_audit
   deps-command:
     description: Command that installs project dependencies.
     required: false
@@ -19,7 +19,7 @@ inputs:
     required: false
     default: "1.19.5-otp-29"
   mix-env:
-    description: MIX_ENV used for dependency installation and checks.
+    description: MIX_ENV used for dependency installation and audit.
     required: false
     default: test
   otp-version:
@@ -64,16 +64,6 @@ runs:
           ${{ runner.os }}-mix-deps-${{ inputs.cache-version }}-
           ${{ runner.os }}-mix-deps-
 
-    - name: Cache compiled build
-      uses: actions/cache@v5
-      with:
-        path: ${{ inputs.working-directory }}/_build
-        key: ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-${{ inputs.mix-env }}-${{ hashFiles(format('{0}/{1}', inputs.working-directory, inputs.version-file)) }}-${{ hashFiles(format('{0}/mix.lock', inputs.working-directory)) }}-${{ hashFiles(format('{0}/mix.exs', inputs.working-directory)) }}
-        restore-keys: |
-          ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-${{ inputs.mix-env }}-
-          ${{ runner.os }}-mix-build-${{ inputs.cache-version }}-
-          ${{ runner.os }}-mix-build-
-
     - name: Install dependencies
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -81,9 +71,9 @@ runs:
       env:
         MIX_ENV: ${{ inputs.mix-env }}
 
-    - name: Check everything
+    - name: Audit dependencies
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: ${{ inputs.check-command }}
+      run: ${{ inputs.audit-command }}
       env:
         MIX_ENV: ${{ inputs.mix-env }}

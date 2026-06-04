@@ -1,0 +1,67 @@
+name: Bump Elixir
+description: Update an Elixir app to the shared hard-coded v1 Elixir, Erlang, and Debian versions, then open a pull request.
+
+inputs:
+  token:
+    description: GitHub token used to create the pull request.
+    required: false
+    default: ""
+  branch:
+    description: Branch name used for the version bump pull request.
+    required: false
+    default: bump-elixir-1.19
+  commit-message:
+    description: Commit message for the version bump.
+    required: false
+    default: Bump Elixir to 1.19.5
+  pr-title:
+    description: Pull request title.
+    required: false
+    default: Bump Elixir to 1.19.5
+  pr-body:
+    description: Pull request body.
+    required: false
+    default: |
+      Bumps the app to the shared Elixir v1 tuple:
+
+      - Elixir 1.19.5
+      - Erlang/OTP 28.5
+      - Docker OTP 28.5.0.1
+      - Debian trixie-20260518-slim
+  assignees:
+    description: GitHub usernames to assign to the pull request.
+    required: false
+    default: dewetblomerus
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v6
+
+    - name: Bump Elixir versions
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        if [[ -f .tool-versions ]]; then
+          perl -0pi -e 's/^elixir\s+.+$/elixir 1.19.5-otp-28/m; s/^erlang\s+.+$/erlang 28.5/m' .tool-versions
+        fi
+
+        if [[ -f Dockerfile ]]; then
+          perl -0pi -e 's/^ARG ELIXIR_VERSION=.+$/ARG ELIXIR_VERSION=1.19.5/m; s/^ARG OTP_VERSION=.+$/ARG OTP_VERSION=28.5.0.1/m; s/^ARG DEBIAN_VERSION=.+$/ARG DEBIAN_VERSION=trixie-20260518-slim/m' Dockerfile
+        fi
+
+        if [[ -f mix.exs ]]; then
+          perl -0pi -e 's/elixir:\s*"~>\s*\d+\.\d+(?:\.\d+)?"/elixir: "~> 1.19"/' mix.exs
+        fi
+
+    - name: Create pull request
+      uses: peter-evans/create-pull-request@v8
+      with:
+        token: ${{ inputs.token || github.token }}
+        branch: ${{ inputs.branch }}
+        commit-message: ${{ inputs.commit-message }}
+        title: ${{ inputs.pr-title }}
+        body: ${{ inputs.pr-body }}
+        assignees: ${{ inputs.assignees }}

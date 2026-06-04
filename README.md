@@ -113,6 +113,43 @@ jobs:
 
 For branch protection with the composite action, require only the `Mix Check` job.
 
+## Elixir version bump action
+
+Use this when an application should get a pull request that bumps it to the shared Elixir v1 tuple used by `quick-average`: Elixir `1.19.5`, Erlang `28.5`, Docker OTP `28.5.0.1`, and Debian `trixie-20260518-slim`.
+
+Create a manually triggered workflow in the application repository:
+
+```yaml
+name: Bump Elixir
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-elixir:
+    name: Bump Elixir
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dewetblomerus/actions-elixir/.github/actions/bump-elixir@main
+```
+
+The action updates root-level `.tool-versions`, `Dockerfile`, and `mix.exs` when those files exist, then opens a pull request assigned to `dewetblomerus`. It intentionally leaves Dockerfile comments unchanged.
+
+The bump action supports these inputs:
+
+| Input | Default | Purpose |
+| --- | --- | --- |
+| `assignees` | `dewetblomerus` | GitHub usernames assigned to the pull request. |
+| `branch` | `bump-elixir-1.19` | Branch name used for the version bump pull request. |
+| `commit-message` | `Bump Elixir to 1.19.5` | Commit message for the version bump. |
+| `pr-body` | Version tuple summary | Pull request body. |
+| `pr-title` | `Bump Elixir to 1.19.5` | Pull request title. |
+| `token` | `github.token` | GitHub token used to create the pull request. |
+
 ## Inputs
 
 Both mix check entry points support these inputs:

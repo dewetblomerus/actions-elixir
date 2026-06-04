@@ -4,7 +4,7 @@ description: Update an Elixir app to the shared hard-coded v1 Elixir, Erlang, an
 inputs:
   token:
     description: GitHub token used to create the pull request.
-    required: false
+    required: true
     default: ""
   branch:
     description: Branch name used for the version bump pull request.

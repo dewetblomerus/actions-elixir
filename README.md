@@ -45,18 +45,7 @@ For branch protection with the reusable workflow, require the `Elixir CI / Mix C
 Examples for the existing apps:
 
 ```yaml
-# red, because it does not currently have .tool-versions
-jobs:
-  elixir-ci:
-    name: Elixir CI
-    uses: dewetblomerus/actions-elixir/.github/workflows/elixir-ci.yml@main
-    with:
-      otp-version: "29.1"
-      elixir-version: "1.19.5-otp-29"
-```
-
-```yaml
-# quick-average and mobile-worship can use their checked-in .tool-versions
+# Use checked-in .tool-versions
 jobs:
   elixir-ci:
     name: Elixir CI
@@ -135,7 +124,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: dewetblomerus/actions-elixir/.github/actions/bump-elixir@main
+        with:
+          token: ${{ secrets.CREATE_PULL_REQUEST_TOKEN }}
 ```
+
+The bump action checks out the repository itself, so the workflow does not need a separate `actions/checkout` step.
+
+The `token` input must be a token that can create the bump branch and pull request in the target repository. In the existing apps this is stored as `CREATE_PULL_REQUEST_TOKEN`.
 
 The action updates root-level `.tool-versions`, `Dockerfile`, and `mix.exs` when those files exist, then opens a pull request assigned to `dewetblomerus`. It intentionally leaves Dockerfile comments unchanged.
 
@@ -148,7 +143,7 @@ The bump action supports these inputs:
 | `commit-message` | `Bump Elixir to 1.19.5` | Commit message for the version bump. |
 | `pr-body` | Version tuple summary | Pull request body. |
 | `pr-title` | `Bump Elixir to 1.19.5` | Pull request title. |
-| `token` | `github.token` | GitHub token used to create the pull request. |
+| `token` | Required | GitHub token used to create the pull request. Use a token that can create branches and pull requests in the target repository. |
 
 ## Inputs
 

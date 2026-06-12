@@ -1,0 +1,54 @@
+name: Bump Elixir
+
+on:
+  workflow_call:
+    inputs:
+      assignees:
+        description: GitHub usernames assigned to the pull request.
+        required: false
+        type: string
+        default: dewetblomerus
+      branch:
+        description: Branch name used for the version bump pull request.
+        required: false
+        type: string
+        default: bump-elixir-version
+      commit-message:
+        description: Commit message for the version bump.
+        required: false
+        type: string
+        default: Bump Elixir version
+      pr-body:
+        description: Pull request body.
+        required: false
+        type: string
+        default: |
+          Bumps the app to the shared Elixir, Erlang, and Debian versions.
+      pr-title:
+        description: Pull request title.
+        required: false
+        type: string
+        default: Bump Elixir version
+    secrets:
+      create-pull-request-token:
+        description: GitHub token used to create the pull request.
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  bump-elixir:
+    name: Bump Elixir
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: dewetblomerus/actions-elixir/.github/actions/bump-elixir@main
+        with:
+          token: ${{ secrets.create-pull-request-token }}
+          assignees: ${{ inputs.assignees }}
+          branch: ${{ inputs.branch }}
+          commit-message: ${{ inputs.commit-message }}
+          pr-body: ${{ inputs.pr-body }}
+          pr-title: ${{ inputs.pr-title }}

@@ -69,6 +69,7 @@ jobs:
   check:
     name: Mix Check
     runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:16
@@ -132,6 +133,7 @@ jobs:
   audit:
     name: Mix Audit
     runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: 10
     continue-on-error: ${{ inputs.audit-continue-on-error }}
     steps:
       - name: Checkout code

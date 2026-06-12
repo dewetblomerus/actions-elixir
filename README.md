@@ -6,7 +6,7 @@ Each application owns its own `mix.exs` and decides what `mix check` means. This
 
 ## Reusable workflow
 
-Use this when the default job shape works for the app. It includes a Postgres service on `localhost:5432` with username `postgres` and password `postgres`, matching the Phoenix-style test setup used by `red`.
+Use this when the default job shape works for the app. It includes a Postgres service on `localhost:5432` with username `postgres` and password `postgres`, matching the Phoenix-style test setup used by `red`. Each job times out after 10 minutes.
 
 Create `.github/workflows/elixir.yml` in the application repository:
 
@@ -56,6 +56,8 @@ jobs:
 
 Use this when the application needs to define its own services, permissions, matrix, or extra steps. The repo workflow owns the job and calls the shared action inside the steps.
 
+Composite actions cannot set the caller job timeout, so each job that calls one of these actions must set `timeout-minutes: 10`.
+
 ```yaml
 name: Checks
 
@@ -75,6 +77,7 @@ jobs:
   mix-check:
     name: Mix Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     services:
       postgres:
         image: postgres:16
@@ -94,6 +97,7 @@ jobs:
   mix-audit:
     name: Mix Audit
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     continue-on-error: true
     steps:
       - uses: actions/checkout@v6
@@ -102,7 +106,7 @@ jobs:
 
 For branch protection with the composite action, require only the `Mix Check` job.
 
-## Elixir version bump action
+## Elixir version bump workflow
 
 Use this when an application should get a pull request that bumps it to the shared Elixir tuple used by `quick-average`: Elixir `1.20.0`, Erlang `29.0`, Docker OTP `29.0`, and Debian `trixie-20260518-slim`.
 
@@ -121,20 +125,18 @@ permissions:
 jobs:
   bump-elixir:
     name: Bump Elixir
-    runs-on: ubuntu-latest
-    steps:
-      - uses: dewetblomerus/actions-elixir/.github/actions/bump-elixir@main
-        with:
-          token: ${{ secrets.CREATE_PULL_REQUEST_TOKEN }}
+    uses: dewetblomerus/actions-elixir/.github/workflows/bump-elixir.yml@main
+    secrets:
+      create-pull-request-token: ${{ secrets.CREATE_PULL_REQUEST_TOKEN }}
 ```
 
-The bump action checks out the repository itself, so the workflow does not need a separate `actions/checkout` step.
+The bump workflow checks out the repository itself, so the caller workflow does not need a separate `actions/checkout` step.
 
-The `token` input must be a token that can create the bump branch and pull request in the target repository. In the existing apps this is stored as `CREATE_PULL_REQUEST_TOKEN`.
+The `create-pull-request-token` secret must be a token that can create the bump branch and pull request in the target repository. In the existing apps this is stored as `CREATE_PULL_REQUEST_TOKEN`.
 
-The action updates root-level `.tool-versions`, `Dockerfile`, and `mix.exs` when those files exist, then opens a pull request assigned to `dewetblomerus`. It intentionally leaves Dockerfile comments unchanged.
+The workflow updates root-level `.tool-versions`, `Dockerfile`, and `mix.exs` when those files exist, then opens a pull request assigned to `dewetblomerus`. It intentionally leaves Dockerfile comments unchanged.
 
-The bump action supports these inputs:
+The bump workflow sets a 10 minute timeout and supports these inputs:
 
 | Input | Default | Purpose |
 | --- | --- | --- |
@@ -143,7 +145,12 @@ The bump action supports these inputs:
 | `commit-message` | `Bump Elixir version` | Commit message for the version bump. |
 | `pr-body` | Generic bump summary | Pull request body. |
 | `pr-title` | `Bump Elixir version` | Pull request title. |
-| `token` | Required | GitHub token used to create the pull request. Use a token that can create branches and pull requests in the target repository. |
+
+The bump workflow requires this secret:
+
+| Secret | Purpose |
+| --- | --- |
+| `create-pull-request-token` | GitHub token used to create the pull request. Use a token that can create branches and pull requests in the target repository. |
 
 ## Inputs
 
